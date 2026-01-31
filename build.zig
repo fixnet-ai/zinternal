@@ -92,40 +92,14 @@ pub fn build(b: *std.Build) void {
     const lib = framework.buildNativeLib(b, target, optimize, config);
     b.installArtifact(lib);
 
-    // === Unit Tests (default) ===
-    const unit_test = b.addTest(.{
-        .root_source_file = b.path("tests/test_unit.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    addModuleImportsToTest(b, unit_test);
-    const run_unit_test = b.addRunArtifact(unit_test);
-    b.default_step.dependOn(&run_unit_test.step);
+    // Build unit tests (default step)
+    framework.buildUnitTests(b, target, optimize, config);
 
-    // === Integration Tests ===
-    const test_runner = b.addExecutable(.{
-        .name = "zinternal_test",
-        .root_source_file = b.path("tests/test_runner.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    test_runner.linkLibC();
-    addModuleImportsToTest(b, test_runner);
-    const run_test_runner = b.addRunArtifact(test_runner);
-    const test_step = b.step("test", "Run integration tests");
-    test_step.dependOn(&run_test_runner.step);
+    // Build integration tests (test step)
+    framework.buildIntegrationTests(b, target, optimize, config);
 
-    // === Build All Targets (no tests) ===
+    // Build all targets (no tests)
     const all_targets_step = b.step("all", "Build for all supported targets");
     const build_all = framework.buildAllTargets(b, optimize, config, &framework.standard_targets, &framework.standard_target_names);
     all_targets_step.dependOn(build_all);
-}
-
-/// Add module imports to test executable
-fn addModuleImportsToTest(b: *std.Build, testArtifact: *std.Build.Step.Compile) void {
-    const modules = framework.createModules(b, config);
-    var iter = modules.map.iterator();
-    while (iter.next()) |entry| {
-        testArtifact.root_module.addImport(entry.key_ptr.*, entry.value_ptr.*);
-    }
 }

@@ -459,6 +459,12 @@ The `all` target compiles static libraries for all supported platforms:
 ### Build Commands
 
 ```bash
+# Build and run unit tests (default)
+zig build
+
+# Run integration tests
+zig build test
+
 # Build all targets (outputs to zig-out/lib/)
 zig build all
 
@@ -467,4 +473,25 @@ zig build -Dtarget=x86_64-linux-gnu
 
 # Release build for specific target
 zig build -Dtarget=aarch64-linux-gnu -Doptimize=ReleaseSafe
+```
+
+### Build Framework
+
+The build system uses `build_tools/build_framework.zig` for unified build flow:
+
+```zig
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const lib = framework.buildNativeLib(b, target, optimize, config);
+    b.installArtifact(lib);
+
+    framework.buildUnitTests(b, target, optimize, config);
+    framework.buildIntegrationTests(b, target, optimize, config);
+
+    const all_step = b.step("all", "Build for all supported targets");
+    const build_all = framework.buildAllTargets(b, optimize, config, ...);
+    all_step.dependOn(build_all);
+}
 ```
