@@ -19,6 +19,13 @@
 - [x] Update `build.zig` - Module configuration, test targets, build-all
 - [x] Create `build.zig.zon` - Build manifest
 
+### C Logger Library
+- [x] Create `src/logger.h` - C logging header for external C projects
+- [x] Create `src/logger.c` - Thread-safe C logging implementation with spinlock
+- [x] Add `logger.c` to native build - Static library includes C code
+- [x] Add `logger.c` to build-all targets - All platforms include C logging
+- [x] Link libc for C compilation - Native and cross-compilation targets
+
 ### Documentation
 - [x] Create `README.md` - Project overview and quick start
 - [x] Create `DESIGN.md` - Architecture and API documentation
