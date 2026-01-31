@@ -88,9 +88,6 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // Initialize SDK paths for cross-compilation
-    framework.initSdks(b);
-
     // Build native static library
     const lib = framework.buildNativeLib(b, target, optimize, config);
     b.installArtifact(lib);

@@ -25,43 +25,26 @@
 
 const std = @import("std");
 
-// ==================== SDK Detection ====================
+// ==================== SDK Sysroots (Hard-coded for macOS) ====================
 
-/// iOS SDK paths (pre-computed at build startup)
-var g_ios_sysroot: ?[]const u8 = null;
-var g_ios_sim_sysroot: ?[]const u8 = null;
-var g_android_sysroot: ?[]const u8 = null;
+/// iOS device SDK sysroot (hard-coded for macOS)
+const g_ios_sysroot = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk";
 
-/// Compute SDK path using xcrun
-fn computeSdkPath(allocator: std.mem.Allocator, sdk_name: []const u8) ?[]const u8 {
-    const result = std.process.Child.run(.{
-        .allocator = allocator,
-        .argv = &[_][]const u8{ "xcrun", "--sdk", sdk_name, "--show-sdk-path" },
-    }) catch {
-        return null;
-    };
-    defer {
-        allocator.free(result.stderr);
-        allocator.free(result.stdout);
-    }
-    if (result.term == .Exited and result.term.Exited == 0) {
-        const trimmed = std.mem.trim(u8, result.stdout, " \n\r");
-        if (trimmed.len > 0) {
-            return allocator.dupe(u8, trimmed) catch null;
-        }
-    }
-    return null;
-}
+/// iOS simulator SDK sysroot (hard-coded for macOS)
+const g_ios_sim_sysroot = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.0.sdk";
 
-/// Compute Android sysroot from ANDROID_NDK environment variable
-pub fn computeAndroidSysroot(allocator: std.mem.Allocator, env_map: *const std.process.EnvMap) ?[]const u8 {
+/// Android NDK sysroot format (needs ANDROID_NDK env var)
+/// Format: {ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/sysroot
+const g_android_suffix = "/toolchains/llvm/prebuilt/darwin-x86_64/sysroot";
+
+/// Get Android sysroot path
+fn getAndroidSysroot(env_map: *const std.process.EnvMap) ?[]const u8 {
     const ndk_path = env_map.get("ANDROID_NDK") orelse return null;
-    const suffix = "/toolchains/llvm/prebuilt/darwin-x86_64/sysroot";
-    return std.mem.concat(allocator, u8, &[_][]const u8{ ndk_path, suffix }) catch null;
+    return std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ ndk_path, g_android_suffix }) catch null;
 }
 
 /// Get sysroot path for cross-compilation targets
-pub fn getSysroot(target: std.Target) ?[]const u8 {
+pub fn getSysroot(target: std.Target, env_map: *const std.process.EnvMap) ?[]const u8 {
     switch (target.os.tag) {
         .ios => {
             // Use simulator SDK for simulator ABI, otherwise device SDK
@@ -73,7 +56,7 @@ pub fn getSysroot(target: std.Target) ?[]const u8 {
         .linux => {
             // Android uses abi == .android
             if (target.abi == .android) {
-                return g_android_sysroot;
+                return getAndroidSysroot(env_map);
             }
             return null;
         },
@@ -145,13 +128,6 @@ pub const TestSpec = struct {
 };
 
 // ==================== Build Functions ====================
-
-/// Initialize SDK paths (call at build startup)
-pub fn initSdks(b: *std.Build) void {
-    g_ios_sysroot = computeSdkPath(b.allocator, "iphoneos");
-    g_ios_sim_sysroot = computeSdkPath(b.allocator, "iphonesimulator");
-    g_android_sysroot = computeAndroidSysroot(b.allocator, &b.graph.env_map);
-}
 
 /// Add C source files with optional sysroot flags
 fn addCSourceFilesWithSysroot(
@@ -279,7 +255,7 @@ pub fn buildAllTargets(
         });
 
         // Add C sources with sysroot detection
-        if (getSysroot(resolved_target.result)) |sysroot| {
+        if (getSysroot(resolved_target.result, &b.graph.env_map)) |sysroot| {
             addCSourceFilesWithSysroot(lib, b.allocator, config.c_sources, sysroot, resolved_target);
         } else {
             addCSourceFilesNative(lib, config.c_sources, config.cflags);
@@ -313,9 +289,6 @@ pub fn build(
     optimize: std.builtin.OptimizeMode,
     config: ProjectConfig,
 ) void {
-    // Initialize SDK paths
-    initSdks(b);
-
     // Build native library
     const lib = buildNativeLib(b, target, optimize, config);
     b.installArtifact(lib);
