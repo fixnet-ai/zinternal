@@ -160,7 +160,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         });
 
-        // Add all modules (C sources not included in cross-compilation)
+        // Add all modules (C sources excluded for cross-compilation)
         lib.root_module.addImport("errors", errors_mod);
         lib.root_module.addImport("platform", platform_mod);
         lib.root_module.addImport("logger", logger_mod);
