@@ -112,8 +112,7 @@ pub fn build(b: *std.Build) void {
         .{ .cpu_arch = .x86_64, .os_tag = .macos },
         .{ .cpu_arch = .aarch64, .os_tag = .macos },
         .{ .cpu_arch = .x86_64, .os_tag = .windows, .abi = .gnu },
-        .{ .cpu_arch = .x86_64, .os_tag = .windows, .abi = .msvc },
-        .{ .cpu_arch = .aarch64, .os_tag = .windows, .abi = .msvc },  // Windows ARM64
+        .{ .cpu_arch = .aarch64, .os_tag = .windows, .abi = .gnu },  // Windows ARM64
 
         // Mobile platforms
         .{ .cpu_arch = .aarch64, .os_tag = .ios },
@@ -129,8 +128,7 @@ pub fn build(b: *std.Build) void {
         "x86_64-macos",
         "aarch64-macos",
         "x86_64-windows-gnu",
-        "x86_64-windows-msvc",
-        "arm64-windows-msvc",
+        "arm64-windows-gnu",
 
         "aarch64-ios",
         "x86_64-ios-sim",
