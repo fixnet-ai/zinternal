@@ -33,18 +33,11 @@ const g_ios_sysroot = "/Applications/Xcode.app/Contents/Developer/Platforms/iPho
 /// iOS simulator SDK sysroot (hard-coded for macOS)
 const g_ios_sim_sysroot = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.0.sdk";
 
-/// Android NDK sysroot format (needs ANDROID_NDK env var)
-/// Format: {ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/sysroot
-const g_android_suffix = "/toolchains/llvm/prebuilt/darwin-x86_64/sysroot";
-
-/// Get Android sysroot path
-fn getAndroidSysroot(env_map: *const std.process.EnvMap) ?[]const u8 {
-    const ndk_path = env_map.get("ANDROID_NDK") orelse return null;
-    return std.mem.concat(std.heap.page_allocator, u8, &[_][]const u8{ ndk_path, g_android_suffix }) catch null;
-}
+/// Android NDK sysroot (hard-coded for macOS)
+const g_android_sysroot = "/Users/modasi/Library/Android/sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/darwin-x86_64/sysroot";
 
 /// Get sysroot path for cross-compilation targets
-pub fn getSysroot(target: std.Target, env_map: *const std.process.EnvMap) ?[]const u8 {
+pub fn getSysroot(target: std.Target) ?[]const u8 {
     switch (target.os.tag) {
         .ios => {
             // Use simulator SDK for simulator ABI, otherwise device SDK
@@ -56,7 +49,7 @@ pub fn getSysroot(target: std.Target, env_map: *const std.process.EnvMap) ?[]con
         .linux => {
             // Android uses abi == .android
             if (target.abi == .android) {
-                return getAndroidSysroot(env_map);
+                return g_android_sysroot;
             }
             return null;
         },
@@ -255,7 +248,7 @@ pub fn buildAllTargets(
         });
 
         // Add C sources with sysroot detection
-        if (getSysroot(resolved_target.result, &b.graph.env_map)) |sysroot| {
+        if (getSysroot(resolved_target.result)) |sysroot| {
             addCSourceFilesWithSysroot(lib, b.allocator, config.c_sources, sysroot, resolved_target);
         } else {
             addCSourceFilesNative(lib, config.c_sources, config.cflags);
