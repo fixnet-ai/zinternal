@@ -146,10 +146,6 @@ Error mapping types and functions are re-exported from errors.zig:
 pub usingnamespace errors;
 ```
 
-#### Alignment Requirements
-
-On macOS x86_64, `std.atomic.Value(u64)` and HashMap require 16-byte alignment due to CMPXCHG16B instruction. Use `platform.alignedAllocator()` for containers with atomic operations.
-
 ### logger.zig
 
 Logging wrapper around Zig's `std.log` with dynamic level control.
@@ -443,22 +439,9 @@ pub fn exit(code: ExitCode) noreturn
 - ConsoleCtrlHandler for signal emulation
 - socketpair() instead of pipe()
 
-## Memory Alignment
-
-**Critical**: On macOS x86_64, `std.atomic.Value(u64)` and HashMap require 16-byte alignment due to CMPXCHG16B instruction. Use `platform.alignedAllocator()` for containers with atomic operations.
-
-```zig
-// Correct: use aligned allocator
-const alloc = platform.alignedAllocator();
-var map = std.StringHashMap(u32).init(alloc);
-
-// Also correct: global variables with explicit alignment
-var g_atomic: std.atomic.Value(u64) align(16) = .init(0);
-```
-
 ## Build Targets
 
-The `build-all` target compiles static libraries for all supported platforms:
+The `all` target compiles static libraries for all supported platforms:
 
 | Platform | Target | ABI |
 |----------|--------|-----|
@@ -471,13 +454,13 @@ The `build-all` target compiles static libraries for all supported platforms:
 | iOS ARM64 | `aarch64-ios` | None |
 | iOS x86_64 Simulator | `x86_64-ios-sim` | None |
 | Android ARM64 | `aarch64-linux-android` | Android |
-| Android x86_64 Simulator | `x86_64-linux-android` | Android |
+| Android x86_64 | `x86_64-linux-android` | Android |
 
 ### Build Commands
 
 ```bash
-# Build for all targets (outputs to zig-out/lib/)
-zig build build-all
+# Build all targets (outputs to zig-out/lib/)
+zig build all
 
 # Build for specific target
 zig build -Dtarget=x86_64-linux-gnu

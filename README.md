@@ -4,20 +4,20 @@ A pure Zig library providing cross-platform utilities for applications.
 
 ## Features
 
-- **Platform Abstraction** - OS detection, architecture detection, aligned memory allocator
-- **Error Mapping** - Cross-platform errno translation (POSIX/Windows to unified NetError)
-- **Logging** - Dynamic log level control with optional file output (wraps std.log)
-- **Configuration** - Lock-free atomic configuration storage for bool/u64/string
-- **Signal Handling** - Cross-platform SIGINT/SIGTERM handling with self-pipe technique
+- **Platform Abstraction** - OS/arch detection, aligned memory allocator
+- **Error Mapping** - Cross-platform errno translation (POSIX/Windows)
+- **Logging** - Dynamic log level control with optional file output
+- **Configuration** - Lock-free atomic configuration storage
+- **Signal Handling** - Cross-platform SIGINT/SIGTERM handling
 - **Application Framework** - Command-line parsing, lifecycle management
 
 ## Modules
 
 | Module | Description |
 |--------|-------------|
-| `platform` | Platform detection, aligned allocator |
+| `platform` | Platform/OS/arch detection, aligned allocator |
 | `errors` | Error code mapping (POSIX/Windows errno) |
-| `logger` | Dynamic log level, std.log wrapper, file output |
+| `logger` | Dynamic log level, file output |
 | `config` | Lock-free atomic configuration storage |
 | `signal` | Signal handling (SIGINT/SIGTERM) |
 | `app` | Application framework with lifecycle management |
@@ -25,19 +25,16 @@ A pure Zig library providing cross-platform utilities for applications.
 ## Quick Start
 
 ```zig
+const std = @import("std");
 const app = @import("app");
 const logger = @import("logger");
 
-const MyApp = app.AppFramework(struct {
-    port: u16 = 8080,
-}) {};
-
 pub fn main() !void {
-    var myapp = try MyApp.init("MyApp", .{}, init_fn);
+    var myapp = try app.SimpleApp.init(.{});
     defer myapp.deinit();
 
-    logger.info("Server started on port {}", .{myapp.state.port});
-    try myapp.run();
+    logger.info("Hello from zinternal!", .{});
+    _ = myapp;
 }
 ```
 
@@ -49,18 +46,18 @@ pub fn main() !void {
 ## Building
 
 ```bash
-# Build and run tests (default)
+# Build and run unit tests (default)
 zig build
 
 # Run integration tests
 zig build test
 
-# Build all supported targets
-zig build build-all
+# Build all supported targets (no tests)
+zig build all
 
 # Cross-platform build
 zig build -Dtarget=x86_64-linux-gnu
-zig build -Dtarget=aarch64-linux-gnu
+zig build -Dtarget=aarch64-macos
 ```
 
 ## Supported Targets
@@ -76,12 +73,12 @@ zig build -Dtarget=aarch64-linux-gnu
 | iOS ARM64 | `aarch64-ios` |
 | iOS x86_64 Simulator | `x86_64-ios-sim` |
 | Android ARM64 | `aarch64-linux-android` |
-| Android x86_64 Simulator | `x86_64-linux-android` |
+| Android x86_64 | `x86_64-linux-android` |
 
 ## Documentation
 
 - [DESIGN.md](DESIGN.md) - Architecture and API reference
-- [BUILD.md](BUILD.md) - Build instructions for all platforms
+- [build_tools/README.md](build_tools/README.md) - Build system specification
 
 ## License
 
