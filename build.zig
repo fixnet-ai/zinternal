@@ -9,6 +9,19 @@
 
 const std = @import("std");
 
+// ==================== C Source Files ====================
+
+const c_sources = &[_][]const u8{
+    "src/logger.c",
+};
+
+const cflags = &[_][]const u8{
+    "-std=c17",
+    "-Wall",
+    "-Wextra",
+    "-O2",
+};
+
 // ==================== Test Specifications ====================
 
 const tests = &.{
@@ -88,6 +101,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    test_runner.linkLibC();  // test_runner needs libc for integration tests
 
     // Add module imports to test runner
     test_runner.root_module.addImport("errors", errors_mod);
@@ -146,7 +160,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         });
 
-        // Add all modules
+        // Add all modules (C sources not included in cross-compilation)
         lib.root_module.addImport("errors", errors_mod);
         lib.root_module.addImport("platform", platform_mod);
         lib.root_module.addImport("logger", logger_mod);

@@ -254,6 +254,20 @@ zig build -Dtarget=aarch64-ios --code-signing-identity "-"
 
 All Windows targets use GNU ABI (MinGW). MSVC is not supported.
 
+### Executable Linking
+
+**test_runner.zig** and any executable with `main()` must link libc:
+
+```zig
+const test_runner = b.addExecutable(.{
+    .name = "zinternal_test",
+    .root_source_file = b.path("tests/test_runner.zig"),
+    .target = target,
+    .optimize = optimize,
+});
+test_runner.linkLibC();  // Required for executables with main()
+```
+
 ### Static Linking
 
 For fully static binaries:
