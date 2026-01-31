@@ -455,3 +455,33 @@ var map = std.StringHashMap(u32).init(alloc);
 // Also correct: global variables with explicit alignment
 var g_atomic: std.atomic.Value(u64) align(16) = .init(0);
 ```
+
+## Build Targets
+
+The `build-all` target compiles static libraries for all supported platforms:
+
+| Platform | Target | ABI |
+|----------|--------|-----|
+| Linux x86_64 | `x86_64-linux-gnu` | GNU |
+| Linux ARM64 | `aarch64-linux-gnu` | GNU |
+| macOS x86_64 | `x86_64-macos` | None |
+| macOS ARM64 | `aarch64-macos` | None |
+| Windows x86_64 | `x86_64-windows-gnu` | GNU |
+| Windows ARM64 | `arm64-windows-gnu` | GNU |
+| iOS ARM64 | `aarch64-ios` | None |
+| iOS x86_64 Simulator | `x86_64-ios-sim` | None |
+| Android ARM64 | `aarch64-linux-android` | Android |
+| Android x86_64 Simulator | `x86_64-linux-android` | Android |
+
+### Build Commands
+
+```bash
+# Build for all targets (outputs to zig-out/lib/)
+zig build build-all
+
+# Build for specific target
+zig build -Dtarget=x86_64-linux-gnu
+
+# Release build for specific target
+zig build -Dtarget=aarch64-linux-gnu -Doptimize=ReleaseSafe
+```

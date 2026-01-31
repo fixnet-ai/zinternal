@@ -19,6 +19,9 @@ zig build
 # Run integration tests
 zig build test
 
+# Build all supported targets
+zig build build-all
+
 # Release build
 zig build -Doptimize=ReleaseSafe
 ```
@@ -54,15 +57,18 @@ zig build -Dtarget=aarch64-ios
 
 ### Target Triplets
 
-| Platform | Target |
-|----------|--------|
-| macOS x86_64 | `x86_64-macos` |
-| macOS ARM | `aarch64-macos` |
-| Linux x86_64 | `x86_64-linux-gnu` |
-| Linux ARM64 | `aarch64-linux-gnu` |
-| Windows x86_64 | `x86_64-windows-gnu` |
-| iOS | `aarch64-ios` |
-| Android | `aarch64-linux-android` |
+| Platform | Target | ABI |
+|----------|--------|-----|
+| macOS x86_64 | `x86_64-macos` | None |
+| macOS ARM64 | `aarch64-macos` | None |
+| Linux x86_64 | `x86_64-linux-gnu` | GNU |
+| Linux ARM64 | `aarch64-linux-gnu` | GNU |
+| Windows x86_64 | `x86_64-windows-gnu` | GNU |
+| Windows ARM64 | `arm64-windows-gnu` | GNU |
+| iOS ARM64 | `aarch64-ios` | None |
+| iOS x86_64 Simulator | `x86_64-ios-sim` | None |
+| Android ARM64 | `aarch64-linux-android` | Android |
+| Android x86_64 Simulator | `x86_64-linux-android` | Android |
 
 ## Directory Structure
 
@@ -70,13 +76,15 @@ zig build -Dtarget=aarch64-ios
 zinternal/
 ├── src/                    # Source code
 │   ├── platform.zig       # Platform abstraction
+│   ├── errors.zig         # Error code mapping
 │   ├── logger.zig         # Logging
 │   ├── config.zig         # Configuration
 │   ├── signal.zig         # Signal handling
 │   └── app.zig            # Application framework
 ├── tests/
 │   ├── test_unit.zig      # Unit tests (zig test)
-│   └── test_runner.zig    # Integration tests (executable)
+│   ├── test_runner.zig    # Integration tests (executable)
+│   └── test_framework.zig # Shared test utilities
 ├── scripts/               # Build scripts
 ├── build.zig             # Build script
 ├── build.zig.zon         # Build manifest
@@ -154,8 +162,8 @@ lipo -create zinternal-x86_64 zinternal-aarch64 -output zinternal-macos
 # x86_64 Windows (MinGW)
 zig build -Dtarget=x86_64-windows-gnu
 
-# x86_64 Windows (MSVC)
-zig build -Dtarget=x86_64-windows-msvc
+# ARM64 Windows (MinGW)
+zig build -Dtarget=arm64-windows-gnu
 ```
 
 #### iOS Targets
@@ -164,18 +172,21 @@ zig build -Dtarget=x86_64-windows-msvc
 # iOS ARM64
 zig build -Dtarget=aarch64-ios
 
-# iOS Simulator
+# iOS x86_64 Simulator
+zig build -Dtarget=x86_64-ios-sim
+
+# iOS ARM64 Simulator
 zig build -Dtarget=aarch64-ios-sim
 ```
 
 #### Android Targets
 
 ```bash
-# ARM64 Android
+# Android ARM64
 zig build -Dtarget=aarch64-linux-android
 
-# ARM32 Android
-zig build -Dtarget=arm-linux-android
+# Android x86_64 Simulator
+zig build -Dtarget=x86_64-linux-android
 ```
 
 ## CI/CD Example
@@ -202,10 +213,12 @@ jobs:
         uses: crazy-max/ghaction-setup-zig@v2
         with:
           zig-version: 0.13.0
-      - name: Build
+      - name: Build native
         run: zig build
       - name: Test
         run: zig build test
+      - name: Build all targets
+        run: zig build build-all
 ```
 
 ## Build Cache
@@ -237,13 +250,9 @@ For iOS builds, code signing may be required:
 zig build -Dtarget=aarch64-ios --code-signing-identity "-"
 ```
 
-### Windows DLL Import
+### Windows Notes
 
-For Windows builds linking against system DLLs:
-
-```bash
-zig build -Dtarget=x86_64-windows-msvc
-```
+All Windows targets use GNU ABI (MinGW). MSVC is not supported.
 
 ### Static Linking
 

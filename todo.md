@@ -3,7 +3,8 @@
 ## Completed
 
 ### Core Modules
-- [x] Create `platform.zig` - Platform abstraction (OS/arch detection, aligned allocator, errno mapping)
+- [x] Create `platform.zig` - Platform abstraction (OS/arch detection, aligned allocator)
+- [x] Create `errors.zig` - Cross-platform error code mapping (POSIX/Windows errno)
 - [x] Create `logger.zig` - std.log wrapper with dynamic level control
 - [x] Create `config.zig` - Lock-free atomic configuration storage
 - [x] Create `signal.zig` - Cross-platform signal handling (SIGINT/SIGTERM)
@@ -15,7 +16,7 @@
 - [x] Create `tests/test_framework.zig` - Shared test utilities
 
 ### Build System
-- [x] Update `build.zig` - Module configuration and test targets
+- [x] Update `build.zig` - Module configuration, test targets, build-all
 - [x] Create `build.zig.zon` - Build manifest
 
 ### Documentation
@@ -25,14 +26,27 @@
 
 ### Refactoring
 - [x] Rename `xlog.zig` to `logger.zig` - std.log wrapper instead of custom implementation
-- [x] Update all module imports to use `logger` instead of `xlog`
-- [x] Update `app.zig` to manage logger/config/signal lifecycle
+- [x] Extract error mapping to `errors.zig` - Reduce platform.zig complexity
+
+### Cross-Platform Support
+- [x] Add `build-all` target for multi-platform builds
+- [x] Windows x86_64 (gnu)
+- [x] Windows ARM64 (gnu)
+- [x] Linux x86_64 (gnu)
+- [x] Linux ARM64 (gnu)
+- [x] macOS x86_64
+- [x] macOS ARM64
+- [x] iOS ARM64
+- [x] iOS x86_64 simulator
+- [x] Android ARM64
+- [x] Android x86_64 simulator
 
 ## Test Results
 
 ```
 Unit Tests:      17/17 passed
 Integration Tests: 8/8 passed
+Build All:       10/10 targets passed
 ```
 
 ## Next Tasks
@@ -56,3 +70,4 @@ Integration Tests: 8/8 passed
 - Zig 0.13.0 required
 - macOS x86_64 requires 16-byte alignment for atomic operations
 - Use `platform.alignedAllocator()` for HashMap and atomic containers
+- All Windows targets use GNU ABI (MinGW)
