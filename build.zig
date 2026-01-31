@@ -17,7 +17,7 @@ const c_sources = &[_][]const u8{
 };
 
 const cflags = &[_][]const u8{
-    "-std=c17",
+    "-std=c99",
     "-Wall",
     "-Wextra",
     "-O2",
@@ -115,8 +115,10 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run integration tests");
     test_step.dependOn(&run_test_runner.step);
 
-    // === Build All Targets ===
-    _ = framework.buildAllTargets(b, optimize, config, &framework.standard_targets, &framework.standard_target_names);
+    // === Build All Targets (no tests) ===
+    const all_targets_step = b.step("all", "Build for all supported targets");
+    const build_all = framework.buildAllTargets(b, optimize, config, &framework.standard_targets, &framework.standard_target_names);
+    all_targets_step.dependOn(build_all);
 }
 
 /// Add module imports to test executable
