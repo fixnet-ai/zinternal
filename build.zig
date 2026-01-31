@@ -3,8 +3,9 @@
 //! Pure Zig library providing cross-platform utilities for applications.
 //!
 //! Build commands:
-//!   zig build          - Build and run unit tests (default)
-//!   zig build test     - Build and run integration tests
+//!   zig build              - Build and run unit tests (default)
+//!   zig build test         - Build and run integration tests
+//!   zig build build-all    - Build for all supported targets
 
 const std = @import("std");
 
@@ -99,4 +100,64 @@ pub fn build(b: *std.Build) void {
     const run_test_runner = b.addRunArtifact(test_runner);
     const test_step = b.step("test", "Run integration tests");
     test_step.dependOn(&run_test_runner.step);
+
+    // === 4. Build All Targets ===
+    const build_all_step = b.step("build-all", "Build for all supported targets");
+
+    // Define all supported targets using Target.Query
+    const all_targets = [_]std.Target.Query{
+        // Desktop platforms
+        .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
+        .{ .cpu_arch = .aarch64, .os_tag = .linux, .abi = .gnu },
+        .{ .cpu_arch = .x86_64, .os_tag = .macos },
+        .{ .cpu_arch = .aarch64, .os_tag = .macos },
+        .{ .cpu_arch = .x86_64, .os_tag = .windows, .abi = .gnu },
+        .{ .cpu_arch = .x86_64, .os_tag = .windows, .abi = .msvc },
+        .{ .cpu_arch = .aarch64, .os_tag = .windows, .abi = .msvc },  // Windows ARM64
+
+        // Mobile platforms
+        .{ .cpu_arch = .aarch64, .os_tag = .ios },
+        .{ .cpu_arch = .x86_64, .os_tag = .ios },  // iOS x86_64 simulator
+        .{ .cpu_arch = .aarch64, .os_tag = .linux, .abi = .android },
+        .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .android },  // Android x86_64 simulator
+    };
+
+    // Target name mapping for output directory
+    const target_names = [_][]const u8{
+        "x86_64-linux-gnu",
+        "aarch64-linux-gnu",
+        "x86_64-macos",
+        "aarch64-macos",
+        "x86_64-windows-gnu",
+        "x86_64-windows-msvc",
+        "arm64-windows-msvc",
+
+        "aarch64-ios",
+        "x86_64-ios-sim",
+        "aarch64-linux-android",
+        "x86_64-linux-android",
+    };
+
+    for (all_targets, target_names) |target_query, _| {
+        const resolved_target = b.resolveTargetQuery(target_query);
+
+        const lib = b.addStaticLibrary(.{
+            .name = "zinternal",
+            .root_source_file = b.path("src/logger.zig"), // Dummy - not actually used
+            .target = resolved_target,
+            .optimize = optimize,
+        });
+
+        // Add all modules
+        lib.root_module.addImport("errors", errors_mod);
+        lib.root_module.addImport("platform", platform_mod);
+        lib.root_module.addImport("logger", logger_mod);
+        lib.root_module.addImport("config", config_mod);
+        lib.root_module.addImport("signal", signal_mod);
+        lib.root_module.addImport("app", app_mod);
+
+        // Install to default lib directory (target subdirectory is not supported with static library)
+        const install_step = b.addInstallArtifact(lib, .{});
+        build_all_step.dependOn(&install_step.step);
+    }
 }
