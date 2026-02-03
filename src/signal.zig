@@ -58,12 +58,16 @@ const windows = if (builtin.os.tag == .windows) struct {
     pub const CTRL_LOGOFF_EVENT = 5;
     pub const CTRL_SHUTDOWN_EVENT = 6;
 
+    pub const HANDLE = *opaque {};
+
     pub const PHANDLER_ROUTINE = *const fn (dwCtrlType: DWORD) callconv(if (builtin.cpu.arch == .x86) .Stdcall else .C) BOOL;
 
     extern "kernel32" fn SetConsoleCtrlHandler(
         HandlerRoutine: PHANDLER_ROUTINE,
         Add: BOOL,
     ) BOOL;
+
+    extern "kernel32" fn CloseHandle(hObject: *anyopaque) BOOL;
 } else struct {};
 
 // ==================== Helper: Unix Detection ====================
@@ -73,11 +77,20 @@ const is_unix = switch (builtin.os.tag) {
     else => false,
 };
 
+// ==================== Platform Handle Abstraction ====================
+
+/// Abstract handle type for cross-platform signal pipe
+/// Uses usize to store file descriptor (Unix) or HANDLE pointer (Windows)
+const SignalHandle = usize;
+
+const INVALID_HANDLE = @as(SignalHandle, 0);
+
 // ==================== Signal Context ====================
 
 /// Signal handling context (internal state)
 const SignalContext = struct {
-    signal_fd: i32 = -1,  // self-pipe read end
+    signal_handle: SignalHandle = INVALID_HANDLE,
+    signal_fd: i32 = -1,  // For getSignalFd() compatibility (returns -1 on Windows)
     caught_signal: std.atomic.Value(c_int) = std.atomic.Value(c_int).init(0),
     handler: ?SignalHandler = null,
 
@@ -99,7 +112,7 @@ const unix_impl = if (is_unix) struct {
 
         // Write to self-pipe (non-blocking, ignore errors)
         const buf: [1]u8 = .{1};
-        _ = std.posix.write(g_signal_ctx.signal_fd, &buf) catch {};
+        _ = std.posix.write(@as(i32, @intCast(g_signal_ctx.signal_handle)), &buf) catch {};
 
         // Call user-defined handler
         if (g_signal_ctx.handler) |h| {
@@ -111,6 +124,11 @@ const unix_impl = if (is_unix) struct {
 // ==================== Windows Console Handler ====================
 
 const windows_impl = if (builtin.os.tag == .windows) struct {
+    /// Write to Windows pipe handle
+    fn writePipe(h: windows.HANDLE, byte: u8) void {
+        _ = std.os.windows.WriteFile(h, &[1]u8{byte}, null) catch {};
+    }
+
     /// Windows console control handler
     fn consoleHandler(dwCtrlType: windows.DWORD) callconv(if (builtin.cpu.arch == .x86) .Stdcall else .C) windows.BOOL {
         // Map Windows events to Unix signals
@@ -124,8 +142,7 @@ const windows_impl = if (builtin.os.tag == .windows) struct {
         _ = g_signal_ctx.caught_signal.store(sig, .seq_cst);
 
         // Write to self-pipe (non-blocking, ignore errors)
-        const buf: [1]u8 = .{1};
-        _ = std.posix.write(g_signal_ctx.signal_fd, &buf) catch {};
+        writePipe(@as(windows.HANDLE, @ptrFromInt(g_signal_ctx.signal_handle)), 1);
 
         // Call user-defined handler
         if (g_signal_ctx.handler) |h| {
@@ -139,18 +156,24 @@ const windows_impl = if (builtin.os.tag == .windows) struct {
 // ==================== Pipe Operations ====================
 
 /// Create a self-pipe for signal notification
-fn createSignalPipe() !struct { read_fd: i32, write_fd: i32 } {
+fn createSignalPipe() !struct { read_handle: SignalHandle, write_handle: SignalHandle } {
     if (is_unix) {
         const pipefd = std.posix.pipe() catch return error.PipeCreationFailed;
-        return .{ .read_fd = pipefd[0], .write_fd = pipefd[1] };
+        return .{ .read_handle = @as(SignalHandle, @intCast(pipefd[0])), .write_handle = @as(SignalHandle, @intCast(pipefd[1])) };
     } else if (builtin.os.tag == .windows) {
-        // Windows doesn't have pipe(), use socketpair
-        var pipefd: [2]i32 = undefined;
-        const sock_result = std.posix.socketpair(std.posix.AF.INET, std.posix.SOCK.STREAM, 0, &pipefd);
-        if (sock_result != 0) {
-            return error.PipeCreationFailed;
-        }
-        return .{ .read_fd = pipefd[0], .write_fd = pipefd[1] };
+        // Windows: use CreatePipe from std.os.windows
+        var rd: std.os.windows.HANDLE = undefined;
+        var wr: std.os.windows.HANDLE = undefined;
+        const sa = std.os.windows.SECURITY_ATTRIBUTES{
+            .nLength = @sizeOf(std.os.windows.SECURITY_ATTRIBUTES),
+            .lpSecurityDescriptor = null,
+            .bInheritHandle = windows.TRUE,
+        };
+        std.os.windows.CreatePipe(&rd, &wr, &sa) catch return error.PipeCreationFailed;
+        // Convert HANDLE pointer to usize
+        const rd_addr = @as(usize, @intFromPtr(rd));
+        const wr_addr = @as(usize, @intFromPtr(wr));
+        return .{ .read_handle = rd_addr, .write_handle = wr_addr };
     } else {
         return error.NotSupported;
     }
@@ -174,7 +197,10 @@ pub fn setup(handler: ?SignalHandler) !void {
 
     // Create self-pipe
     const pipe = try createSignalPipe();
-    g_signal_ctx.signal_fd = pipe.read_fd;
+    g_signal_ctx.signal_handle = pipe.read_handle;
+    if (is_unix) {
+        g_signal_ctx.signal_fd = @as(i32, @intCast(pipe.read_handle));
+    }
 
     // Platform-specific handler registration
     if (is_unix) {
@@ -239,11 +265,19 @@ pub fn clear() void {
     // Drain self-pipe
     var buf: [128]u8 = undefined;
     while (true) {
-        const n = std.posix.read(g_signal_ctx.signal_fd, &buf) catch |err| switch (err) {
-            error.WouldBlock => return,
-            else => return,
-        };
-        if (n == 0) return;
+        if (is_unix) {
+            const n = std.posix.read(@as(i32, @intCast(g_signal_ctx.signal_handle)), &buf) catch |err| switch (err) {
+                error.WouldBlock => return,
+                else => return,
+            };
+            if (n == 0) return;
+        } else if (builtin.os.tag == .windows) {
+            const handle = @as(windows.HANDLE, @ptrFromInt(g_signal_ctx.signal_handle));
+            const n = std.os.windows.ReadFile(handle, &buf, null) catch return;
+            if (n == 0) return;
+        } else {
+            return;
+        }
     }
 }
 
@@ -265,13 +299,15 @@ pub fn cleanup() void {
         cleanupWindows();
     }
 
-    // Close self-pipe
-    if (g_signal_ctx.signal_fd >= 0) {
-        std.posix.close(g_signal_ctx.signal_fd);
+    // Close self-pipe handle
+    if (g_signal_ctx.signal_handle != INVALID_HANDLE) {
         if (is_unix) {
-            // On Unix, write end is separate
-            // We need to track it, but for simplicity close read end only
+            std.posix.close(@as(i32, @intCast(g_signal_ctx.signal_handle)));
+        } else if (builtin.os.tag == .windows) {
+            const handle = @as(windows.HANDLE, @ptrFromInt(g_signal_ctx.signal_handle));
+            _ = windows.CloseHandle(handle);
         }
+        g_signal_ctx.signal_handle = INVALID_HANDLE;
         g_signal_ctx.signal_fd = -1;
     }
 
@@ -293,7 +329,9 @@ fn cleanupUnix() void {
 
 /// Windows platform cleanup
 fn cleanupWindows() void {
-    _ = windows.SetConsoleCtrlHandler(null, windows.FALSE);
+    // Use a dummy handler function pointer cast to remove handler
+    const dummy: *const fn (c_uint) callconv(.C) c_int = undefined;
+    _ = windows.SetConsoleCtrlHandler(dummy, windows.FALSE);
 }
 
 /// Block and wait for signal
