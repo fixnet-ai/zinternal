@@ -59,7 +59,7 @@ const zig_modules = &[_]framework.ZigModule{
     .{
         .name = "app",
         .file = "src/app.zig",
-        .deps = &[_][]const u8{ "platform", "logger", "signal", "config" },
+        .deps = &[_][]const u8{ "platform", "logger", "signal", "config", "storage" },
     },
     .{
         .name = "storage",

@@ -35,6 +35,7 @@ const platform = @import("platform");
 const logger = @import("logger");
 const signal = @import("signal");
 const config = @import("config");
+const storage = @import("storage");
 
 // ==================== App Info ====================
 
@@ -341,6 +342,36 @@ pub const SimpleApp = struct {
         if (self.config.enable_leak_detection) {
             _ = platform.reportLeaks();
         }
+    }
+
+    /// Get data path for current platform
+    pub fn getDataPath(self: *SimpleApp) []const u8 {
+        _ = self;
+        return storage.getDataPath();
+    }
+
+    /// Get shared directory path for cross-process communication
+    pub fn getSharedPath(self: *SimpleApp, group_id: []const u8) []const u8 {
+        _ = self;
+        return storage.getSharedPath(group_id);
+    }
+
+    /// Get shared path into provided buffer
+    pub fn getSharedPathInto(self: *SimpleApp, buf: []u8, group_id: []const u8) []const u8 {
+        _ = self;
+        return storage.getSharedPathInto(buf, group_id);
+    }
+
+    /// Get current working directory
+    pub fn getCwd(self: *SimpleApp) []const u8 {
+        _ = self;
+        return storage.getCwd();
+    }
+
+    /// Get executable directory path
+    pub fn getExeDir(self: *SimpleApp) []const u8 {
+        _ = self;
+        return storage.getExeDir();
     }
 };
 

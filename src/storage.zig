@@ -136,6 +136,16 @@ pub fn getBaseDir() []const u8 {
     return ".";
 }
 
+/// Get current working directory
+pub fn getCwd() []const u8 {
+    return std.posix.getcwd(&g_path_buf) catch return ".";
+}
+
+/// Get executable directory path
+pub fn getExeDir() []const u8 {
+    return std.fs.selfExeDirPath(&g_path_buf) catch ".";
+}
+
 /// Get shared directory path for cross-process communication
 /// Used by App + Extension to share configuration
 pub fn getSharedPath(group_id: []const u8) []const u8 {

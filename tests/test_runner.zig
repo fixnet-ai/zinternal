@@ -48,6 +48,20 @@ fn testSimpleAppLifecycle() bool {
     // Verify allocator is valid (SimpleApp always has a valid allocator)
     _ = myapp.allocator;
 
+    // Verify storage access methods
+    const data_path = myapp.getDataPath();
+    if (data_path.len == 0) return false;
+
+    const shared_path = myapp.getSharedPath("test_group");
+    if (shared_path.len == 0) return false;
+
+    // Verify cwd and exeDir
+    const cwd = myapp.getCwd();
+    if (cwd.len == 0) return false;
+
+    const exe_dir = myapp.getExeDir();
+    if (exe_dir.len == 0) return false;
+
     return true;
 }
 
