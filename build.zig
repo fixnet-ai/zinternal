@@ -4,8 +4,14 @@
 //!
 //! Build commands:
 //!   zig build              - Build and run unit tests (default)
-//!   zig build test         - Build and run integration tests
-//!   zig build build-all    - Build for all supported targets
+//!   zig build test         - Build test_runner to bin/{os}/
+//!   zig build all          - Build static libraries for all targets
+//!   zig build all-tests    - Build test_runner for all targets
+//!
+//! Output structure:
+//!   zig-out/
+//!   ├── lib/{target}/      # Static libraries
+//!   └── bin/{target}/      # Test executables
 
 const std = @import("std");
 const framework = @import("build_tools/build_framework.zig");
@@ -68,7 +74,7 @@ const test_files = &[_]framework.TestSpec{
         .name = "test_runner",
         .desc = "Integration tests for zinternal",
         .file = "tests/test_runner.zig",
-        .exe_name = "zinternal_test",
+        .exe_name = "test_runner",
     },
 };
 
@@ -95,11 +101,16 @@ pub fn build(b: *std.Build) void {
     // Build unit tests (default step)
     framework.buildUnitTests(b, target, optimize, config);
 
-    // Build integration tests (test step)
-    framework.buildIntegrationTests(b, target, optimize, config);
+    // Build test_runner to bin/{os}/ (test step)
+    framework.buildTestRunner(b, target, optimize, config);
 
     // Build all targets (no tests)
-    const all_targets_step = b.step("all", "Build for all supported targets");
+    const all_targets_step = b.step("all", "Build static libraries for all supported targets");
     const build_all = framework.buildAllTargets(b, optimize, config, &framework.standard_targets, &framework.standard_target_names);
     all_targets_step.dependOn(build_all);
+
+    // Build all test_runner targets
+    const all_tests_step = b.step("all-tests", "Build test_runner for all supported targets");
+    const build_all_tests = framework.buildAllTests(b, optimize, config, &framework.standard_targets, &framework.standard_target_names);
+    all_tests_step.dependOn(build_all_tests);
 }

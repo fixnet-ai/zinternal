@@ -1,6 +1,8 @@
 //! test_runner.zig - Integration Tests for zinternal
 //!
 //! Tests the full application lifecycle with all modules working together.
+//!
+//! Usage: sudo ./zig-out/bin/{os}/zinternal_test_runner
 //! Each test creates a complete App instance and verifies its lifecycle.
 
 const std = @import("std");

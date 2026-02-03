@@ -49,15 +49,33 @@ pub fn main() !void {
 # Build and run unit tests (default)
 zig build
 
-# Run integration tests
+# Build test_runner to bin/macos/ (requires sudo to run)
 zig build test
+sudo ./zig-out/bin/macos/zinternal_test_runner
 
-# Build all supported targets (no tests)
+# Build all static libraries to lib/{target}/
 zig build all
+
+# Build all test binaries to bin/{target}/
+zig build all-tests
 
 # Cross-platform build
 zig build -Dtarget=x86_64-linux-gnu
 zig build -Dtarget=aarch64-macos
+```
+
+### Output Structure
+
+```text
+zig-out/
+├── lib/                    # Static libraries by platform
+│   ├── x86_64-linux-gnu/libzinternal.a
+│   ├── x86_64-windows-gnu/zinternal.lib
+│   └── ...
+└── bin/                    # Test executables by platform
+    ├── x86_64-linux-gnu/zinternal_test_runner
+    ├── x86_64-windows-gnu/zinternal_test_runner.exe
+    └── ...
 ```
 
 ## Supported Targets
