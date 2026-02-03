@@ -13,6 +13,8 @@
 ### Testing
 - [x] Create `tests/test_unit.zig` - Unit tests for all modules
 - [x] Create `tests/test_runner.zig` - Integration tests for App lifecycle
+- [x] Create `tests/test_android.zig` - Standalone Android test
+- [x] Create `tests/test_ios.zig` - Standalone iOS Simulator test
 - [x] Move `test_framework.zig` to `build_tools/` - Shared test utilities
 
 ### Build System
@@ -21,6 +23,8 @@
 - [x] Extract build framework to `build_tools/build_framework.zig`
 - [x] Use C99 standard for C code
 - [x] Hard-code sysroot paths for iOS/Android cross-compilation
+- [x] Add iOS Simulator build steps (`ios-test`, `ios-runner`)
+- [x] Add Android build steps (`android-test`, `android-runner`)
 
 ### C Logger Library
 - [x] Create `src/logger.h` - C logging header for external C projects
@@ -53,6 +57,8 @@
 Unit Tests:          passed
 Integration Tests:   passed
 Build All Targets:   10/10 passed
+Android Tests:       8/8 passed (all tests pass on emulator)
+iOS Simulator:      8/8 passed (all tests pass on simulator)
 ```
 
 ## Next Tasks
@@ -60,7 +66,7 @@ Build All Targets:   10/10 passed
 ### Platform Support
 - [ ] Test Linux build in Lima VM
 - [ ] Test Windows build
-- [ ] Test iOS/Android cross-compilation
+- [x] Test iOS/Android cross-compilation
 
 ### Performance
 - [ ] Profile memory usage with GPA

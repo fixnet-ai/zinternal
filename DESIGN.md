@@ -439,6 +439,20 @@ pub fn exit(code: ExitCode) noreturn
 - ConsoleCtrlHandler for signal emulation
 - socketpair() instead of pipe()
 
+### Android
+
+- Uses Bionic libc instead of glibc/musl
+- Requires NDK sysroot and `linkLibC()` + `setLibCFile()` for Zig build
+- Test log files must use `/data/local/tmp/` path (writable directory)
+- Platform info returns "unknown-{arch}" since Android is classified as `.other` in `getOSType()`
+
+### iOS
+
+- Uses Apple Darwin libc (libSystem)
+- Requires custom libc.txt pointing to iPhoneSimulator.sdk
+- Simulator builds use x86_64 architecture with simulator ABI
+- Run tests with `xcrun simctl spawn booted`
+
 ## Build Targets
 
 The `all` target compiles static libraries for all supported platforms:
@@ -474,6 +488,44 @@ zig build -Dtarget=x86_64-linux-gnu
 # Release build for specific target
 zig build -Dtarget=aarch64-linux-gnu -Doptimize=ReleaseSafe
 ```
+
+### Android Build Commands
+
+```bash
+# Build standalone Android test (minimal C imports, no Zig runtime)
+zig build android-test
+
+# Build full integration test for Android
+zig build android-runner
+
+# Deploy and run on Android emulator
+adb push zig-out/bin/x86_64-linux-android/test_runner /data/local/tmp/
+adb shell "chmod 755 /data/local/tmp/test_runner && /data/local/tmp/test_runner"
+```
+
+**Note**: Android builds require:
+- Android NDK 25.1.8937393
+- `linkLibC()` + `setLibCFile()` with correct libc.txt path
+- NDK sysroot paths for Bionic libc
+
+### iOS Simulator Build Commands
+
+```bash
+# Build standalone iOS Simulator test (minimal C imports, no Zig runtime)
+zig build ios-test
+
+# Build full integration test for iOS Simulator
+zig build ios-runner
+
+# Run on iOS Simulator (booted simulator)
+xcrun simctl spawn booted zig-out/bin/x86_64-ios-sim/test_runner
+```
+
+**Note**: iOS Simulator builds require:
+
+- Xcode iOS Simulator SDK
+- Custom libc.txt pointing to iPhoneSimulator.sdk
+- Run with `xcrun simctl spawn`
 
 ### Build Framework
 

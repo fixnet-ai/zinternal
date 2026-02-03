@@ -93,6 +93,56 @@ zig-out/
 | Android ARM64 | `aarch64-linux-android` |
 | Android x86_64 | `x86_64-linux-android` |
 
+## Testing
+
+### Desktop Platforms
+
+```bash
+# Unit tests (default)
+zig build
+
+# Integration tests
+zig build test
+sudo ./zig-out/bin/macos/zinternal_test_runner
+```
+
+### Android Emulator
+
+```bash
+# Build standalone Android test (minimal C imports)
+zig build android-test
+
+# Build full integration test for Android
+zig build android-runner
+
+# Deploy and run on Android emulator
+adb push zig-out/bin/x86_64-linux-android/test_runner /data/local/tmp/
+adb shell "chmod 755 /data/local/tmp/test_runner && /data/local/tmp/test_runner"
+```
+
+### iOS Simulator
+
+```bash
+# Build standalone iOS Simulator test (minimal C imports)
+zig build ios-test
+
+# Build full integration test for iOS Simulator
+zig build ios-runner
+
+# Run on iOS Simulator (booted simulator)
+xcrun simctl spawn booted zig-out/bin/x86_64-ios-sim/test_runner
+```
+
+**Test Results**:
+
+```
+Unit Tests:          passed
+Integration Tests:   passed
+Build All Targets:   10/10 passed
+Android Tests:       8/8 passed
+iOS Simulator:       8/8 passed
+```
+
 ## Documentation
 
 - [DESIGN.md](DESIGN.md) - Architecture and API reference
