@@ -9,6 +9,7 @@ A pure Zig library providing cross-platform utilities for applications.
 - **Logging** - Dynamic log level control with optional file output
 - **Configuration** - Lock-free atomic configuration storage
 - **Signal Handling** - Cross-platform SIGINT/SIGTERM handling
+- **Storage** - Cross-platform storage paths and file operations
 - **Application Framework** - Command-line parsing, lifecycle management
 
 ## Modules
@@ -20,6 +21,7 @@ A pure Zig library providing cross-platform utilities for applications.
 | `logger` | Dynamic log level, file output |
 | `config` | Lock-free atomic configuration storage |
 | `signal` | Signal handling (SIGINT/SIGTERM) |
+| `storage` | Storage paths and file operations |
 | `app` | Application framework with lifecycle management |
 
 ## Quick Start
@@ -46,37 +48,13 @@ pub fn main() !void {
 ## Building
 
 ```bash
-# Build and run unit tests (default)
-zig build
-
-# Build test_runner to bin/macos/ (requires sudo to run)
-zig build test
-sudo ./zig-out/bin/macos/zinternal_test_runner
-
-# Build all static libraries to lib/{target}/
-zig build all
-
-# Build all test binaries to bin/{target}/
-zig build all-tests
-
-# Cross-platform build
-zig build -Dtarget=x86_64-linux-gnu
-zig build -Dtarget=aarch64-macos
+zig build              # Build and run unit tests
+zig build test         # Build integration tests
+zig build all          # Build all static libraries
+zig build -Dtarget=   # Cross-platform build
 ```
 
-### Output Structure
-
-```text
-zig-out/
-├── lib/                    # Static libraries by platform
-│   ├── x86_64-linux-gnu/libzinternal.a
-│   ├── x86_64-windows-gnu/zinternal.lib
-│   └── ...
-└── bin/                    # Test executables by platform
-    ├── x86_64-linux-gnu/zinternal_test_runner
-    ├── x86_64-windows-gnu/zinternal_test_runner.exe
-    └── ...
-```
+See [DESIGN.md](DESIGN.md) for detailed build commands and output structure.
 
 ## Supported Targets
 
@@ -93,59 +71,9 @@ zig-out/
 | Android ARM64 | `aarch64-linux-android` |
 | Android x86_64 | `x86_64-linux-android` |
 
-## Testing
-
-### Desktop Platforms
-
-```bash
-# Unit tests (default)
-zig build
-
-# Integration tests
-zig build test
-sudo ./zig-out/bin/macos/zinternal_test_runner
-```
-
-### Android Emulator
-
-```bash
-# Build standalone Android test (minimal C imports)
-zig build android-test
-
-# Build full integration test for Android
-zig build android-runner
-
-# Deploy and run on Android emulator
-adb push zig-out/bin/x86_64-linux-android/test_runner /data/local/tmp/
-adb shell "chmod 755 /data/local/tmp/test_runner && /data/local/tmp/test_runner"
-```
-
-### iOS Simulator
-
-```bash
-# Build standalone iOS Simulator test (minimal C imports)
-zig build ios-test
-
-# Build full integration test for iOS Simulator
-zig build ios-runner
-
-# Run on iOS Simulator (booted simulator)
-xcrun simctl spawn booted zig-out/bin/x86_64-ios-sim/test_runner
-```
-
-**Test Results**:
-
-```
-Unit Tests:          passed
-Integration Tests:   passed
-Build All Targets:   10/10 passed
-Android Tests:       8/8 passed
-iOS Simulator:       8/8 passed
-```
-
 ## Documentation
 
-- [DESIGN.md](DESIGN.md) - Architecture and API reference
+- [DESIGN.md](DESIGN.md) - Architecture, API reference, platform notes
 - [build_tools/README.md](build_tools/README.md) - Build system specification
 
 ## License

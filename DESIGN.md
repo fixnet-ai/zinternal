@@ -10,6 +10,7 @@ zinternal/
 │   ├── logger.zig        # Logging wrapper (std.log)
 │   ├── config.zig        # Lock-free configuration
 │   ├── signal.zig        # Signal handling
+│   ├── storage.zig       # Cross-platform storage abstraction
 │   └── app.zig           # Application framework
 └── tests/
     ├── test_unit.zig     # Unit tests
@@ -21,10 +22,13 @@ zinternal/
 ```
 app.zig
     ├── platform.zig
-    ├── errors.zig
     ├── logger.zig
     ├── signal.zig
-    └── config.zig
+    ├── config.zig
+    └── storage.zig
+
+storage.zig
+    └── platform.zig
 
 platform.zig
     └── errors.zig
@@ -312,6 +316,95 @@ pub fn waitForSignal() c_int
 pub const SignalHandler = *const fn (sig: c_int) callconv(.C) void
 ```
 
+### storage.zig
+
+Cross-platform storage path abstraction with unified file operations.
+
+#### Constants
+
+```zig
+pub const MAX_PATH_LEN: usize = 256
+```
+
+#### Error Type
+
+```zig
+pub const StorageError = error{
+    path_not_found,
+    path_invalid,
+    path_too_long,
+    access_denied,
+    read_only,
+    io_error,
+    disk_full,
+    file_exists,
+    file_not_found,
+    jni_error,
+    platform_not_supported,
+    shared_dir_failed,
+    unknown,
+};
+
+pub fn mapError(err: anyerror) StorageError
+pub fn getErrorMessage(err: StorageError) []const u8
+```
+
+#### Path Types
+
+```zig
+pub const PathType = enum {
+    data,       // App's private data directory
+    cache,      // Cache directory
+    documents,   // User documents (iOS)
+    library,     // App library directory (iOS)
+    shared,      // App Group shared container
+};
+
+pub const PathConfig = struct {
+    path_type: PathType = .data,
+};
+```
+
+#### Path Functions
+
+```zig
+// Get data path (desktop: executable dir, mobile: platform-specific)
+pub fn getDataPath() []const u8
+
+// Get base directory abstraction (".")
+pub fn getBaseDir() []const u8
+
+// Get current working directory
+pub fn getCwd() []const u8
+
+// Get executable directory path
+pub fn getExeDir() []const u8
+
+// Get shared directory for cross-process communication
+pub fn getSharedPath(group_id: []const u8) []const u8
+pub fn getSharedPathInto(buf: []u8, group_id: []const u8) []const u8
+```
+
+#### File Operations
+
+```zig
+pub const OpenOptions = struct {
+    read: bool = true,
+    write: bool = false,
+    create: bool = false,
+    truncate: bool = false,
+    append: bool = false,
+};
+
+pub fn openFile(rel_path: []const u8, options: OpenOptions) StorageError!std.fs.File
+pub fn readFile(allocator: std.mem.Allocator, rel_path: []const u8) StorageError![]const u8
+pub fn writeFile(rel_path: []const u8, data: []const u8) StorageError!void
+pub fn createDir(rel_path: []const u8) StorageError!void
+pub fn deleteFile(rel_path: []const u8) StorageError!void
+pub fn exists(rel_path: []const u8) StorageError!bool
+pub fn getFileSize(rel_path: []const u8) StorageError!usize
+```
+
 ### app.zig
 
 Application framework with lifecycle management.
@@ -400,6 +493,13 @@ pub const SimpleApp = struct {
     pub fn stop(self: *SimpleApp) void
     pub fn allocator(self: *SimpleApp) std.mem.Allocator
     pub fn deinit(self: *SimpleApp) void
+
+    // Storage access methods
+    pub fn getDataPath(self: *SimpleApp) []const u8
+    pub fn getSharedPath(self: *SimpleApp, group_id: []const u8) []const u8
+    pub fn getSharedPathInto(self: *SimpleApp, buf: []u8, group_id: []const u8) []const u8
+    pub fn getCwd(self: *SimpleApp) []const u8
+    pub fn getExeDir(self: *SimpleApp) []const u8
 };
 ```
 
@@ -421,6 +521,7 @@ pub fn exit(code: ExitCode) noreturn
 - **logger.zig**: Uses atomic operations for level changes
 - **config.zig**: All operations use atomic load/store with monotonic memory order
 - **signal.zig**: Uses atomic operations for signal state, mutex-free design
+- **storage.zig**: All functions are thread-safe (uses thread-local buffer for path operations)
 
 ## Platform Notes
 
@@ -428,16 +529,19 @@ pub fn exit(code: ExitCode) noreturn
 
 - Aligned allocator uses 16-byte alignment for HashMap compatibility
 - Signal handling uses POSIX pipes
+- Storage: executable directory as data path
 
 ### Linux
 
 - Standard POSIX signal handling
 - 8-byte alignment sufficient
+- Storage: executable directory as data path
 
 ### Windows
 
 - ConsoleCtrlHandler for signal emulation
 - socketpair() instead of pipe()
+- Storage: executable directory as data path
 
 ### Android
 
@@ -445,6 +549,7 @@ pub fn exit(code: ExitCode) noreturn
 - Requires NDK sysroot and `linkLibC()` + `setLibCFile()` for Zig build
 - Test log files must use `/data/local/tmp/` path (writable directory)
 - Platform info returns "unknown-{arch}" since Android is classified as `.other` in `getOSType()`
+- Storage: uses ANDROID_DATA/ANDROID_PACKAGE_NAME environment variables
 
 ### iOS
 
@@ -452,6 +557,7 @@ pub fn exit(code: ExitCode) noreturn
 - Requires custom libc.txt pointing to iPhoneSimulator.sdk
 - Simulator builds use x86_64 architecture with simulator ABI
 - Run tests with `xcrun simctl spawn booted`
+- Storage: Documents directory via HOME environment variable
 
 ## Build Targets
 
