@@ -9,6 +9,7 @@
 - [x] Create `config.zig` - Lock-free atomic configuration storage
 - [x] Create `signal.zig` - Cross-platform signal handling (SIGINT/SIGTERM)
 - [x] Create `app.zig` - Application framework with lifecycle management
+- [x] Create `storage.zig` - Cross-platform storage path abstraction
 
 ### Testing
 - [x] Create `tests/test_unit.zig` - Unit tests for all modules

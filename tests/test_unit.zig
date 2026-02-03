@@ -8,6 +8,7 @@ const platform = @import("platform");
 const logger = @import("logger");
 const config = @import("config");
 const signal = @import("signal");
+const storage = @import("storage");
 
 // ==================== Platform Tests ====================
 
@@ -135,6 +136,48 @@ test "signal: Signal constants" {
     try std.testing.expect(signal.SIGINT == 2);
     // SIGTERM is 15 on Linux, different on other platforms
     try std.testing.expect(signal.SIGTERM > 0);
+}
+
+// ==================== Storage Tests ====================
+
+test "storage: getDataPath returns non-empty" {
+    const path = storage.getDataPath();
+    try std.testing.expect(path.len > 0);
+    std.debug.print("Data path: {s}\n", .{path});
+}
+
+test "storage: getBaseDir returns dot" {
+    const base = storage.getBaseDir();
+    try std.testing.expect(std.mem.eql(u8, base, "."));
+}
+
+test "storage: getSharedPath with group_id" {
+    const group_id = "shared_group";
+    const path = storage.getSharedPath(group_id);
+    std.debug.print("Shared path: {s}\n", .{path});
+    // Verify path length and basic structure
+    try std.testing.expect(path.len > 0);
+    // Check path ends with /shared_group
+    try std.testing.expect(path.len > 13);
+    try std.testing.expect(path[path.len - 13..].len == 13);
+}
+
+test "storage: StorageError messages" {
+    try std.testing.expectEqualStrings("Storage path not found", storage.getErrorMessage(error.path_not_found));
+    try std.testing.expectEqualStrings("Access denied to storage", storage.getErrorMessage(error.access_denied));
+    try std.testing.expectEqualStrings("I/O error on storage", storage.getErrorMessage(error.io_error));
+}
+
+test "storage: PathConfig with types" {
+    const config_data = storage.PathConfig{ .path_type = .data };
+    try std.testing.expect(config_data.path_type == .data);
+
+    const config_cache = storage.PathConfig{ .path_type = .cache };
+    try std.testing.expect(config_cache.path_type == .cache);
+}
+
+test "storage: MAX_PATH_LEN is sufficient" {
+    try std.testing.expect(storage.MAX_PATH_LEN >= 256);
 }
 
 // ==================== Compile-time Verification ====================

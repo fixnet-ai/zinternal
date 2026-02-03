@@ -61,6 +61,11 @@ const zig_modules = &[_]framework.ZigModule{
         .file = "src/app.zig",
         .deps = &[_][]const u8{ "platform", "logger", "signal", "config" },
     },
+    .{
+        .name = "storage",
+        .file = "src/storage.zig",
+        .deps = &[_][]const u8{"platform"},
+    },
 };
 
 const test_files = &[_]framework.TestSpec{
